@@ -1,0 +1,67 @@
+name: Release
+
+# Tag a version to build, notarize and publish the Mac host.
+#   git tag v1.0 && git push origin v1.0
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Import Developer ID certificate
+        env:
+          DEVELOPER_ID_P12: ${{ secrets.DEVELOPER_ID_P12 }}
+          DEVELOPER_ID_P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/build.keychain"
+          security create-keychain -p actions "$KEYCHAIN"
+          security set-keychain-settings -lut 3600 "$KEYCHAIN"
+          security unlock-keychain -p actions "$KEYCHAIN"
+          echo "$DEVELOPER_ID_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$DEVELOPER_ID_P12_PASSWORD" \
+            -T /usr/bin/codesign
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | tr -d '"')
+          security set-key-partition-list -S apple-tool:,apple: -s -k actions "$KEYCHAIN"
+          rm -f "$RUNNER_TEMP/cert.p12"
+
+      - name: Build, notarize and package
+        env:
+          DEVELOPER_ID: ${{ secrets.DEVELOPER_ID }}
+          TEAM_ID: ${{ secrets.TEAM_ID }}
+          AC_API_KEY_ID: ${{ secrets.AC_API_KEY_ID }}
+          AC_API_ISSUER_ID: ${{ secrets.AC_API_ISSUER_ID }}
+          AC_API_KEY_P8: ${{ secrets.AC_API_KEY_P8 }}
+          VERSION: ${{ github.ref_name }}
+        run: ./scripts/release.sh
+
+      - name: Publish GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/Pult-*.zip
+            dist/appcast.json
+          generate_release_notes: true
+
+      # Optional: push the zip + appcast to the update server so existing
+      # installs update themselves. Needs the UPDATE_SERVER_SSH_KEY secret.
+      - name: Upload to update server
+        if: ${{ env.UPDATE_HOST != '' }}
+        env:
+          UPDATE_HOST: ${{ secrets.UPDATE_HOST }}
+          UPDATE_PATH: ${{ secrets.UPDATE_PATH }}
+          UPDATE_SERVER_SSH_KEY: ${{ secrets.UPDATE_SERVER_SSH_KEY }}
+        run: |
+          mkdir -p ~/.ssh && echo "$UPDATE_SERVER_SSH_KEY" > ~/.ssh/id && chmod 600 ~/.ssh/id
+          scp -o StrictHostKeyChecking=accept-new -i ~/.ssh/id \
+            dist/Pult-*.zip dist/appcast.json "$UPDATE_HOST:$UPDATE_PATH/"

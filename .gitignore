@@ -1,0 +1,9 @@
+build/
+DerivedData/
+*.xcodeproj/xcuserdata/
+*.xcodeproj/project.xcworkspace/
+.DS_Store
+*.p12
+*.p8
+*.cer
+ExportOptions.plist

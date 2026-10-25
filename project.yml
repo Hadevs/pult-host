@@ -1,0 +1,38 @@
+name: Pult
+options:
+  bundleIdPrefix: com.hadevs
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    # Required for notarization. CI overrides the identity/team for releases;
+    # a local build falls back to automatic signing with your own team.
+    ENABLE_HARDENED_RUNTIME: YES
+    ENABLE_APP_SANDBOX: NO
+targets:
+  PultHost:
+    type: application
+    platform: macOS
+    productName: Pult
+    sources:
+      - Sources/PultShared
+      - Sources/PultHost
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.hadevs.pult.host
+        INFOPLIST_KEY_LSUIElement: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Pult
+        INFOPLIST_KEY_NSHumanReadableCopyright: "© 2026 Basil Tsironis"
+        INFOPLIST_KEY_NSLocalNetworkUsageDescription: "Pult lets your iPhone find and connect to this Mac."
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    info:
+      path: Sources/PultHost/App/Info.plist
+      properties:
+        LSUIElement: true
+        NSBonjourServices: [_pult._tcp]
+        LSMinimumSystemVersion: "14.0"
