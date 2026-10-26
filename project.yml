@@ -25,6 +25,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hadevs.pult.host
+        PRODUCT_NAME: Pult
         INFOPLIST_KEY_LSUIElement: YES
         INFOPLIST_KEY_CFBundleDisplayName: Pult
         INFOPLIST_KEY_NSHumanReadableCopyright: "© 2026 Basil Tsironis"
